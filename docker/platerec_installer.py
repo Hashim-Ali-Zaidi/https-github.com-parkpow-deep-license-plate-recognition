@@ -1,12 +1,13 @@
 import argparse
-import base64
+# import base64
 import os
 import platform
-import re
+# import re
 import subprocess
 import sys
 import time
 import webbrowser
+import dash_uploader as du
 from pathlib import Path
 
 import dash
@@ -423,13 +424,7 @@ def get_video_picker(product):
                     children=html.Div(id=f'loading-upload-{product}')),
         dbc.Col(
             [
-                dcc.Upload([
-                    dbc.Button('Upload File'),
-                    html.Span(
-                        '', id=f'span-videopath-{product}', className='ml-2')
-                ],
-                           id=f'pickup-video-{product}',
-                           accept='video/*'),
+                du.Upload(upload_id='', id=f'pickup-video-{product}'),
             ],
             width=4,
         ),
@@ -531,7 +526,7 @@ app = dash.Dash(
     external_scripts=[
         'https://cdn.jsdelivr.net/npm/clipboard@2.0.6/dist/clipboard.min.js'
     ])
-
+du.configure_upload(app, '', use_upload_id=False)
 app.layout = dbc.Container([
     get_splash_screen(),
     html.H2(children='Plate Recognizer Installer',
@@ -671,33 +666,32 @@ def refresh_docker_snapshot(n_clicks, hardware, uninstall):
         return FLEX, NONE, NONE, NONE, NONE, None
 
 
-@app.callback([
-    Output('pickup-stream', 'style'),
-], [
-    Input('check-video-stream', 'checked'),
-])
-def select_video(checked):
-    if checked:
-        return [FLEX]
-    else:
-        return [NONE]
+# @app.callback([
+#     Output('pickup-stream', 'style'),
+# ], [
+#     Input('check-video-stream', 'checked'),
+# ])
+# def select_video(checked):
+#     if checked:
+#         return [FLEX]
+#     else:
+#         return [NONE]
 
-
-@app.callback([
-    Output('span-videopath-stream', 'children'),
-    Output('loading-upload-stream', 'children')
-], [
-    Input('pickup-video-stream', 'contents'),
-    State('pickup-video-stream', 'filename'),
-    State('input-home-stream', 'value')
-])
-def set_videopath(content, name, path):
-    if content and name and path:
-        return [name, None]
-    elif name and path:
-        return ['File error', None]
-    else:
-        raise PreventUpdate
+# @app.callback([
+#     Output('span-videopath-stream', 'children'),
+#     Output('loading-upload-stream', 'children')
+# ], [
+#     Input('pickup-video-stream', 'contents'),
+#     State('pickup-video-stream', 'filename'),
+#     State('input-home-stream', 'value')
+# ])
+# def set_videopath(content, name, path):
+#     if content and name and path:
+#         return [name, None]
+#     elif name and path:
+#         return ['File error', None]
+#     else:
+#         raise PreventUpdate
 
 
 @app.callback([
@@ -860,35 +854,34 @@ def uninstall_snapshot(n_clicks, hardware, token, key):
 
 @app.callback(Output('area-config-stream', 'value'), [
     Input('input-home-stream', 'value'),
-    Input('pickup-video-stream', 'filename'),
-    State('check-video-stream', 'checked'),
 ])
-def change_path(home, videofile, videocheck):
+def change_path(home):
     config = read_config(home)
-    if videofile and videocheck:  # replace url with a path to video
-        url = re.search('url = (.*)\n', config).group(1)
-        config = re.sub(url, f'{USER_DATA}{videofile}', config)
+    # if videofile and videocheck:  # replace url with a path to video
+    #     url = re.search('url = (.*)\n', config).group(1)
+    #     config = re.sub(url, f'{USER_DATA}{videofile}', config)
     return config
 
 
-@app.callback([
-    Output('p-status-stream', 'children'),
-    Output('card-stream', 'style'),
-    Output('command-stream', 'children'),
-    Output('loading-submit-stream', 'children')
-], [
-    Input('area-config-stream', 'value'),
-    Input('button-submit-stream', 'n_clicks'),
-    Input('input-token-stream', 'value'),
-    Input('input-key-stream', 'value'),
-    Input('input-home-stream', 'value'),
-    Input('check-boot-stream', 'checked'),
-    State('pickup-video-stream', 'contents'),
-    State('pickup-video-stream', 'filename'),
-    State('check-video-stream', 'checked'),
-])
-def submit_stream(config, n_clicks, token, key, home, boot, videocontent,
-                  videofile, videocheck):
+@app.callback(
+    [
+        Output('p-status-stream', 'children'),
+        Output('card-stream', 'style'),
+        Output('command-stream', 'children'),
+        Output('loading-submit-stream', 'children')
+    ],
+    [
+        Input('area-config-stream', 'value'),
+        Input('button-submit-stream', 'n_clicks'),
+        Input('input-token-stream', 'value'),
+        Input('input-key-stream', 'value'),
+        Input('input-home-stream', 'value'),
+        Input('check-boot-stream', 'checked'),
+        # State('pickup-video-stream', 'contents'),
+        # State('pickup-video-stream', 'filename'),
+        # State('check-video-stream', 'checked'),
+    ])
+def submit_stream(config, n_clicks, token, key, home, boot):
     if dash.callback_context.triggered[0][
             'prop_id'] == 'button-submit-stream.n_clicks':
         is_valid, error = verify_token(token, key, product='stream')
@@ -896,11 +889,11 @@ def submit_stream(config, n_clicks, token, key, home, boot, videocontent,
             write_result, error = write_config(home, config)
             if not write_result:
                 return error, NONE, '', None
-            if videocontent and videofile and videocheck:
-                content_type, content_string = videocontent.split(',')
-                decoded = base64.b64decode(content_string)
-                with open(os.path.join(home, videofile), 'wb') as video:
-                    video.write(decoded)
+            # if videocontent and videofile and videocheck:
+            #     content_type, content_string = videocontent.split(',')
+            #     decoded = base64.b64decode(content_string)
+            #     with open(os.path.join(home, videofile), 'wb') as video:
+            #         video.write(decoded)
             user_info = ''
             nvidia = ''
             image_tag = ''

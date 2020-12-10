@@ -18,3 +18,4 @@ six==1.15.0
 Werkzeug==1.0.1
 configobj==5.0.6
 requests==2.25.0
+dash-uploader==0.4.1
